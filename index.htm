@@ -1,0 +1,88 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>แผนที่การ์ตูนพร้อมนำทาง</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<!-- Routing -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+
+<style>
+body { margin: 0; }
+#map { width: 100vw; height: 100vh; }
+#controls {
+  position: absolute; top: 10px; left: 10px;
+  background: white; padding: 10px; border-radius: 8px;
+  z-index: 1000; font-family: sans-serif;
+}
+</style>
+</head>
+
+<body>
+<div id="controls">
+  <button id="locateBtn">ตำแหน่งของฉัน</button>
+  <select id="placeSelect">
+    <option value="">เลือกสถานที่</option>
+    <option value="0">จุดที่ 1</option>
+    <option value="1">จุดที่ 2</option>
+  </select>
+  <button id="goBtn">นำทาง</button>
+</div>
+
+<div id="map"></div>
+
+<script>
+const map = L.map('map').setView([13.7367, 100.5232], 17);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+let latSpan = 0.006, lngSpan = 0.009;
+let overlayBounds = [
+  [13.7367 - latSpan/2, 100.5232 - lngSpan/2],
+  [13.7367 + latSpan/2, 100.5232 + lngSpan/2]
+];
+
+L.imageOverlay('campus-map.png', overlayBounds).addTo(map);
+
+const places = [
+  { name:'จุดที่ 1', x:0.25, y:0.35 },
+  { name:'จุดที่ 2', x:0.62, y:0.58 }
+];
+
+function toLatLng(x, y) {
+  const s = overlayBounds[0][0], w = overlayBounds[0][1];
+  const n = overlayBounds[1][0], e = overlayBounds[1][1];
+  return [n + (s - n) * y, w + (e - w) * x];
+}
+
+places.forEach(p=>{
+  L.marker(toLatLng(p.x,p.y)).addTo(map).bindPopup(p.name);
+});
+
+let userPos = null;
+document.getElementById('locateBtn').onclick = ()=> map.locate({setView:true, maxZoom:18});
+map.on('locationfound', e=>{
+  userPos = e.latlng;
+  L.circleMarker(e.latlng, {radius:8}).addTo(map).bindPopup("คุณอยู่ที่นี่").openPopup();
+});
+
+let route = null;
+document.getElementById('goBtn').onclick = ()=>{
+  const idx = document.getElementById('placeSelect').value;
+  if(!userPos) return alert("กด 'ตำแหน่งของฉัน' ก่อน");
+  if(idx==="") return alert("เลือกสถานที่ก่อน");
+  if(route) map.removeControl(route);
+  route = L.Routing.control({
+    waypoints:[ userPos, toLatLng(places[idx].x, places[idx].y) ]
+  }).addTo(map);
+};
+</script>
+</body>
+</html>
